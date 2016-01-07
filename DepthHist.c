@@ -38,6 +38,15 @@ main(int argc, char** argv)
 int64_t
 read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buffer)
 {
+  bam1_t *r1;
+  bam1_t *r2;
+  int retv1, retv2;
+  r1=bam_init1();
+  r2=bam_init1();
+  retv1 = sam_read1(htsf, header_p, r1);
+  fprintf(stdout, "%d:%d:%d:%d:%d\n", r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);
+  retv2 = sam_read1(htsf, header_p, r2);
+  fprintf(stdout, "%d:%d:%d:%d:%d\n", r2->core.tid, r2->core.pos, r2-> core.qual, r2->core.mtid, r2->core.mpos);
   return 0;
 }
 void
