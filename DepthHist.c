@@ -91,7 +91,7 @@ write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer)
   int i,j;
   fprintf(out, "track type=wiggle_0\n");
   for(i=0;i<header_p->n_targets;i++){
-    fprintf(out, "fixedStep chrom=%s start=1\n", header_p->target_name[i]);
+    fprintf(out, "fixedStep chrom=%s start=1 step=1\n", header_p->target_name[i]);
     for(j=0; j < header_p-> target_len[i]; j++){
       fprintf(out, "%d\n", depth_buffer[i][j]);
     }
