@@ -5,6 +5,7 @@
 
 int64_t read_sam_and_fill_depth_buffer(htsFile*, bam_hdr_t*, int**);
 void write_depths_as_wig(FILE*, bam_hdr_t*, int**);
+void usage();
 int
 main(int argc, char** argv)
 {
@@ -13,7 +14,11 @@ main(int argc, char** argv)
   htsFile *htsf;
   bam_hdr_t * header_p;
   int **depth_buffer;
-  htsf = hts_open("fr.sam", "r");
+  if(argc != 2){
+    usage();
+    exit(EXIT_FAILURE);
+  }
+  htsf = hts_open(argv[1], "r");
   if(!htsf){
     fputs("sam/bam file open failed\n", stderr);
     exit(EXIT_FAILURE);
@@ -60,8 +65,8 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
 /*      fprintf(stdout, "%s:%d:%d:%d:%d:%d\n", bam_get_qname(r2), r2->core.tid, r2->core.pos, r2-> core.qual, r2->core.mtid, r2->core.mpos);*/
       if(strcmp(bam_get_qname(r1),bam_get_qname(r2))!=0){
         /* r2 is a new read. Thus, we need to make r1 point to this and start to seek again */
-       t=r2; r1=r2; r2=t;
-       break;
+        t=r2; r1=r2; r2=t;
+        break;
       }
       /* now we have two records of single fragment */
       if( r2-> core.qual >= threshold &&r1->core.mtid == r2->core.tid && r1->core.mpos == r2->core.pos){
@@ -82,6 +87,7 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
       }
       retv2 = sam_read1(htsf, header_p, r2);
     }
+    retv1 = retv2;
   }
   return count;
 }
@@ -96,5 +102,9 @@ write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer)
       fprintf(out, "%d\n", depth_buffer[i][j]);
     }
   }
+}
+void usage()
+{
+  fputs("DepthHist sam_file > wigfile", stderr);
 }
 
