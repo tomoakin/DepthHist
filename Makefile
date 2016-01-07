@@ -1,3 +1,5 @@
+DepthHist: DepthHist.c
+	cc -I../samtools-1.3/htslib-1.3 DepthHist.c ../samtools-1.3/htslib-1.3/libhts.a  -lpthread -lz -o $@
 pUC18.fa.sa: pUC18.fa
 	bwa index pUC18.fa
 
