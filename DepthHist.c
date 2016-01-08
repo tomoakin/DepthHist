@@ -46,7 +46,7 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
   bam1_t *r1;
   bam1_t *r2;
   bam1_t *t;
-  int threshold = 30;
+  int threshold = 40;
   int count = 0;
   int retv1, retv2;
   r1=bam_init1();
@@ -54,7 +54,9 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
   retv1 = sam_read1(htsf, header_p, r1);
   while(retv1 == 0){
     count ++;
-/*    fprintf(stdout, "%s:%d:%d:%d:%d:%d\n", bam_get_qname(r1), r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);*/
+#if 0
+    fprintf(stderr, "r1 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r1), r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);
+#endif 
     if(r1->core.qual < threshold) { /* more condition may come until a good mapping is found */
       retv1 = sam_read1(htsf, header_p, r1);
       continue;
@@ -62,14 +64,19 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
     retv2 = sam_read1(htsf, header_p, r2);
     while(retv2 == 0){ /* seeking matching record that pairs r1 */
       count ++;
-/*      fprintf(stdout, "%s:%d:%d:%d:%d:%d\n", bam_get_qname(r2), r2->core.tid, r2->core.pos, r2-> core.qual, r2->core.mtid, r2->core.mpos);*/
+#if 0
+      fprintf(stderr, "r2 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r2), r2->core.tid, r2->core.pos, r2-> core.qual, r2->core.mtid, r2->core.mpos);
+#endif 
       if(strcmp(bam_get_qname(r1),bam_get_qname(r2))!=0){
         /* r2 is a new read. Thus, we need to make r1 point to this and start to seek again */
-        t=r2; r1=r2; r2=t;
+        t=r2; r2=r1; r1=t;
         break;
       }
       /* now we have two records of single fragment */
-      if( r2-> core.qual >= threshold &&r1->core.mtid == r2->core.tid && r1->core.mpos == r2->core.pos){
+      if( r2-> core.qual >= threshold && r1->core.qual >=threshold && 
+          r1-> core.tid == r2->core.tid &&
+          r1-> core.mtid == r2->core.tid && r1->core.mpos == r2->core.pos &&
+          r1-> core.isize > 10000 && r1 -> core.isize < 40000){
         int i,f,t;
         if(r1->core.pos < r2->core.pos){
           f = r1->core.pos;
@@ -78,11 +85,17 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
           f = r2->core.pos;
           t = r1->core.pos + bam_cigar2rlen(r1->core.n_cigar, bam_get_cigar(r1));
         }
-/*        fprintf(stderr,"fill target %d: from %d to %d\n", r1->core.tid, f, t); */
+#if 0
+        fprintf(stderr,"fill target %d: from %d to %d\n", r1->core.tid, f, t);
+#endif 
         for(i=f; i<t; i++){
           depth_buffer[r1->core.tid][i] += 1;
         }
         retv1 = sam_read1(htsf, header_p, r1);
+        if(retv1 == 0)
+#if 0
+          fprintf(stderr, "r1 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r1), r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);
+#endif 
         break;
       }
       retv2 = sam_read1(htsf, header_p, r2);
@@ -100,6 +113,8 @@ write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer)
     fprintf(out, "fixedStep chrom=%s start=1 step=1\n", header_p->target_name[i]);
     for(j=0; j < header_p-> target_len[i]; j++){
       fprintf(out, "%d\n", depth_buffer[i][j]);
+      if(j> 10000 && j< header_p-> target_len[i] - 10000 && depth_buffer[i][j] < 5)
+        fprintf(stderr, "%s %i %i\n", header_p->target_name[i], j, depth_buffer[i][j]);
     }
   }
 }
