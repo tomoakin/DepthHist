@@ -12,6 +12,18 @@ A depth plot, sometimes called coverage plot, showing read depth of each positio
 is a hint, but here I want to have a plot of clone depth that include the unsequenced
 region.
 
-Because the mapping data comes as SAM or BAM file and we need to
-process a large volume of data, I try 
-to implement in C using samtools/HTSlib.
+# Requirements
+This program uses HTSlib to parse SAM format data.
+In ihe input sam file, paired read should be in a cluster of
+reads with the same name. Therefore, the input should be
+just the output of an alignment program like bwa, or
+name sorted.
+
+# Usage
+DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] [-o output]
+
+# Example work flow
+    bwa mem -p mp.fq  >  mp.sam
+    DepthHist -d 3 -n 10000 -m 40 -i 10000 -a 40000 -s mp.sam -o mp.wig 2> mp.low_cov_points
+    ruby range_compress.rb mp.low_cov_points > mp.low_cov_regions
+

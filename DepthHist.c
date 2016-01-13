@@ -1,7 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <htslib/sam.h>
+
+int getopt(int argc, char * const argv[],
+                  const char *optstring);
+extern char *optarg;
+extern int optind, opterr, optopt;
+
 
 typedef struct _pair_params{
   int min_valid_mapq;
@@ -16,6 +23,7 @@ typedef struct _region_params{
 int64_t read_sam_and_fill_depth_buffer(htsFile*, bam_hdr_t*, int**, pair_params);
 void write_depths_as_wig(FILE*, bam_hdr_t*, int**, region_params);
 void usage();
+
 int
 main(int argc, char** argv)
 {
@@ -26,14 +34,44 @@ main(int argc, char** argv)
   htsFile *htsf;
   bam_hdr_t * header_p;
   int **depth_buffer;
-  if(argc != 2){
-    usage();
-    exit(EXIT_FAILURE);
-  }
-  htsf = hts_open(argv[1], "r");
-  if(!htsf){
-    fputs("sam file open failed\n", stderr);
-    exit(EXIT_FAILURE);
+  int c;
+  FILE *out=stdout;
+  char*endptr;
+
+  while ((c = getopt(argc, argv, "d:n:m:i:a:s:o:")) != -1){
+    switch (c){
+    case 'd':
+      region_p.depth_threshold = strtol(optarg,&endptr,0);
+      break;
+    case 'n':
+      region_p.non_reporting_margin = strtol(optarg,&endptr,0);
+      break;
+    case 'm':
+      pair_p.min_valid_mapq = strtol(optarg,&endptr,0);
+      break;
+    case 'i':
+      pair_p.min_proper_insert = strtol(optarg,&endptr,0);
+      break;
+    case 'a':
+      pair_p.max_proper_insert = strtol(optarg,&endptr,0);
+      break;
+    case 's':
+      htsf = hts_open(optarg, "r");
+      if(!htsf){
+        fputs("sam file open failed\n", stderr);
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case 'o':
+      out = fopen(optarg, "r");
+      if(!out){
+        fputs("input file open failed\n", stderr);
+        exit(EXIT_FAILURE);
+      }
+      break;
+    default:
+      usage();
+    }
   }
   header_p = sam_hdr_read(htsf);
   if(!header_p){
