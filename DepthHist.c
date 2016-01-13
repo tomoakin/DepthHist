@@ -3,14 +3,26 @@
 #include <stdint.h>
 #include <htslib/sam.h>
 
-int64_t read_sam_and_fill_depth_buffer(htsFile*, bam_hdr_t*, int**);
-void write_depths_as_wig(FILE*, bam_hdr_t*, int**);
+typedef struct _pair_params{
+  int min_valid_mapq;
+  int min_proper_insert;
+  int max_proper_insert;
+} pair_params;
+typedef struct _region_params{
+  int depth_threshold;
+  int non_reporting_margin;
+} region_params;
+
+int64_t read_sam_and_fill_depth_buffer(htsFile*, bam_hdr_t*, int**, pair_params);
+void write_depths_as_wig(FILE*, bam_hdr_t*, int**, region_params);
 void usage();
 int
 main(int argc, char** argv)
 {
   int n_target;
   int i;
+  pair_params pair_p = {40, 10000, 40000};
+  region_params region_p = {5, 11000};
   htsFile *htsf;
   bam_hdr_t * header_p;
   int **depth_buffer;
@@ -20,7 +32,7 @@ main(int argc, char** argv)
   }
   htsf = hts_open(argv[1], "r");
   if(!htsf){
-    fputs("sam/bam file open failed\n", stderr);
+    fputs("sam file open failed\n", stderr);
     exit(EXIT_FAILURE);
   }
   header_p = sam_hdr_read(htsf);
@@ -36,17 +48,16 @@ main(int argc, char** argv)
     depth_buffer[i] = calloc(header_p->target_len[i], sizeof(int));
     if(!depth_buffer[i]){fputs("memory allocation failed", stderr);exit(EXIT_FAILURE);}
   }
-  read_sam_and_fill_depth_buffer(htsf, header_p, depth_buffer);
-  write_depths_as_wig(stdout, header_p, depth_buffer);
+  read_sam_and_fill_depth_buffer(htsf, header_p, depth_buffer, pair_p);
+  write_depths_as_wig(stdout, header_p, depth_buffer, region_p);
   sam_close(htsf);
 }
 int64_t
-read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buffer)
+read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buffer, pair_params param)
 {
   bam1_t *r1;
   bam1_t *r2;
   bam1_t *t;
-  int threshold = 40;
   int count = 0;
   int retv1, retv2;
   r1=bam_init1();
@@ -57,7 +68,7 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
 #if 0
     fprintf(stderr, "r1 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r1), r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);
 #endif 
-    if(r1->core.qual < threshold) { /* more condition may come until a good mapping is found */
+    if(r1->core.qual < param.min_valid_mapq) { /* more condition may come until a good mapping is found */
       retv1 = sam_read1(htsf, header_p, r1);
       continue;
     }
@@ -73,10 +84,10 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
         break;
       }
       /* now we have two records of single fragment */
-      if( r2-> core.qual >= threshold && r1->core.qual >=threshold && 
+      if( r2-> core.qual >= param.min_valid_mapq && r1->core.qual >= param.min_valid_mapq && 
           r1-> core.tid == r2->core.tid &&
           r1-> core.mtid == r2->core.tid && r1->core.mpos == r2->core.pos &&
-          r1-> core.isize > 10000 && r1 -> core.isize < 40000){
+          r1-> core.isize >= param.min_proper_insert && r1 -> core.isize <= param.max_proper_insert){
         int i,f,t;
         if(r1->core.pos < r2->core.pos){
           f = r1->core.pos;
@@ -105,7 +116,7 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
   return count;
 }
 void
-write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer)
+write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer, region_params param)
 {
   int i,j;
   fprintf(out, "track type=wiggle_0\n");
@@ -113,13 +124,15 @@ write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer)
     fprintf(out, "fixedStep chrom=%s start=1 step=1\n", header_p->target_name[i]);
     for(j=0; j < header_p-> target_len[i]; j++){
       fprintf(out, "%d\n", depth_buffer[i][j]);
-      if(j> 10000 && j< header_p-> target_len[i] - 10000 && depth_buffer[i][j] < 5)
+      if(j> param.non_reporting_margin && 
+         j< header_p-> target_len[i] - param.non_reporting_margin &&
+         depth_buffer[i][j] < param.depth_threshold)
         fprintf(stderr, "%s %i %i\n", header_p->target_name[i], j, depth_buffer[i][j]);
     }
   }
 }
 void usage()
 {
-  fputs("DepthHist sam_file > wigfile", stderr);
+  fputs("DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] > wigfile", stderr);
 }
 
