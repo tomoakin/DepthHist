@@ -63,9 +63,9 @@ main(int argc, char** argv)
       }
       break;
     case 'o':
-      out = fopen(optarg, "r");
+      out = fopen(optarg, "w");
       if(!out){
-        fputs("input file open failed\n", stderr);
+        fputs("output file open failed\n", stderr);
         exit(EXIT_FAILURE);
       }
       break;
@@ -87,7 +87,7 @@ main(int argc, char** argv)
     if(!depth_buffer[i]){fputs("memory allocation failed", stderr);exit(EXIT_FAILURE);}
   }
   read_sam_and_fill_depth_buffer(htsf, header_p, depth_buffer, pair_p);
-  write_depths_as_wig(stdout, header_p, depth_buffer, region_p);
+  write_depths_as_wig(out, header_p, depth_buffer, region_p);
   sam_close(htsf);
 }
 int64_t

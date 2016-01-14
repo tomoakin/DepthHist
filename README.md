@@ -26,9 +26,13 @@ DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_i
 The following example assumes bash grammer, to redirect.
 
     bwa index ref.fa
-    bwa mem -p ref.fa mp.fq  >  mp.sam
-    java -jar path/to/picard.jar SortSam I=mp.sam O=mp.bam
-    java -jar path/to/picard.jar CollectInsertSizeMetrics I=mp.bam H=mp.hist O=mp.metrics MINIMUM_PCT=0.3 HISTOGRAM_WIDTH=40000
+    bwa mem -t 32 -p ref.fa mp.fq > mp.sam
+    java -Xmx10G -XX:ParallelGCThreads=3 -jar path/to/picard.jar \
+        SortSam I=mp.sam O=mp.bam \
+        SO=coordinate CREATE_INDEX=true MAX_RECORDS_IN_RAM=5000000
+    java -Xmx10G -XX:ParallelGCThreads=3 -jar path/to/picard.jar \
+        CollectInsertSizeMetrics I=mp.bam \
+        H=mp.hist O=mp.metrics HISTOGRAM_WIDTH=40000 MINIMUM_PCT=0.3
 
 read mp.metrics and choose appropriate parameter (should be automated, but not yet)
 
@@ -36,4 +40,3 @@ read mp.metrics and choose appropriate parameter (should be automated, but not y
     paste <(fatt names ref.fa) <(fatt len ref.fa) > ref.sizes
     wigToBigWig mp.wig ref.sizes mp.bw
     ruby range_compress.rb mp.low_cov_points > mp.low_cov_regions
-
