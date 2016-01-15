@@ -105,6 +105,17 @@ is_proper_pair(bam1_t *r1, bam1_t *r2, pair_params param)
   return 0;
 }
 
+void
+fill_depth_buffer(bam1_t *r1, bam1_t *r2, int**depth_buffer)
+{
+  int i,f,t;
+  f = r1->core.pos;
+  t = r2->core.pos + bam_cigar2rlen(r2->core.n_cigar, bam_get_cigar(r2));
+  for(i=f; i<t; i++){
+    depth_buffer[r1->core.tid][i] += 1;
+  }
+}
+
 int64_t
 read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buffer, pair_params param)
 {
@@ -132,25 +143,13 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
       }
       /* now we have two records of single fragment */
       if(is_proper_pair(r1,r2, param)){
-        int i,f,t;
         if(r1->core.pos < r2->core.pos){
-          f = r1->core.pos;
-          t = r2->core.pos + bam_cigar2rlen(r2->core.n_cigar, bam_get_cigar(r2));
+          fill_depth_buffer(r1,r2,depth_buffer);
         }else{
-          f = r2->core.pos;
-          t = r1->core.pos + bam_cigar2rlen(r1->core.n_cigar, bam_get_cigar(r1));
-        }
-#if 0
-        fprintf(stderr,"fill target %d: from %d to %d\n", r1->core.tid, f, t);
-#endif 
-        for(i=f; i<t; i++){
-          depth_buffer[r1->core.tid][i] += 1;
+          fill_depth_buffer(r2,r1,depth_buffer);
         }
         retv1 = sam_read1(htsf, header_p, r1);
         if(retv1 == 0)
-#if 0
-          fprintf(stderr, "r1 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r1), r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);
-#endif 
         break;
       }
       retv2 = sam_read1(htsf, header_p, r2);
