@@ -90,6 +90,21 @@ main(int argc, char** argv)
   write_depths_as_wig(out, header_p, depth_buffer, region_p);
   sam_close(htsf);
 }
+
+int
+is_proper_pair(bam1_t *r1, bam1_t *r2, pair_params param)
+{
+  if( r2-> core.qual >= param.min_valid_mapq && 
+      r1-> core.qual >= param.min_valid_mapq && 
+      r1-> core.tid == r2->core.tid &&
+      r1-> core.mtid == r2->core.tid && 
+      r1-> core.mpos == r2->core.pos &&
+      r1-> core.isize >= param.min_proper_insert && 
+      r1 -> core.isize <= param.max_proper_insert) 
+    return 1;
+  return 0;
+}
+
 int64_t
 read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buffer, pair_params param)
 {
@@ -103,9 +118,6 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
   retv1 = sam_read1(htsf, header_p, r1);
   while(retv1 == 0){
     count ++;
-#if 0
-    fprintf(stderr, "r1 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r1), r1->core.tid, r1->core.pos, r1-> core.qual, r1->core.mtid, r1->core.mpos);
-#endif 
     if(r1->core.qual < param.min_valid_mapq) { /* more condition may come until a good mapping is found */
       retv1 = sam_read1(htsf, header_p, r1);
       continue;
@@ -113,19 +125,13 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
     retv2 = sam_read1(htsf, header_p, r2);
     while(retv2 == 0){ /* seeking matching record that pairs r1 */
       count ++;
-#if 0
-      fprintf(stderr, "r2 %s\t%d:%d:%d:%d:%d\n", bam_get_qname(r2), r2->core.tid, r2->core.pos, r2-> core.qual, r2->core.mtid, r2->core.mpos);
-#endif 
-      if(strcmp(bam_get_qname(r1),bam_get_qname(r2))!=0){
+      if(strcmp(bam_get_qname(r1), bam_get_qname(r2))!=0){
         /* r2 is a new read. Thus, we need to make r1 point to this and start to seek again */
         t=r2; r2=r1; r1=t;
         break;
       }
       /* now we have two records of single fragment */
-      if( r2-> core.qual >= param.min_valid_mapq && r1->core.qual >= param.min_valid_mapq && 
-          r1-> core.tid == r2->core.tid &&
-          r1-> core.mtid == r2->core.tid && r1->core.mpos == r2->core.pos &&
-          r1-> core.isize >= param.min_proper_insert && r1 -> core.isize <= param.max_proper_insert){
+      if(is_proper_pair(r1,r2, param)){
         int i,f,t;
         if(r1->core.pos < r2->core.pos){
           f = r1->core.pos;
