@@ -20,7 +20,22 @@ just the output of an alignment program like bwa, or
 name sorted.
 
 # Usage
-DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] [-o output]
+    DepthHist [-d depth_threshold] \
+        [-n non_reporting_margin] \
+        [-m min_mapq] \
+        [-i min_insert] [-a max_insert] \
+        [-s sam_file] [-o output]
+
+This program reads a sam_file and find pairs of reads having both at least min_mapq.
+Calculate the span of the pair reads and if the span size is between min_insert and max_insert
+accept as a good pair and increment the depth at each positions as depth.
+The output is a standard uncompressed text representation of wig format, which 
+can be converted to a more efficient binary format using wigToBigWig.
+The output defaults to stdout if not specified.
+While reporting the depths to wig format output, points with depth lower than
+depth_threshold will be written to stderr.
+The low coverage points can be gathered as low coverage regions with
+range_compress.rb.
 
 # Example work flow
 The following example assumes bash grammer, to redirect.
