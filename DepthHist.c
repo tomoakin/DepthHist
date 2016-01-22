@@ -21,7 +21,7 @@ typedef struct _region_params{
 } region_params;
 
 int64_t read_sam_and_fill_depth_buffer(htsFile*, bam_hdr_t*, int**, pair_params);
-void write_depths_as_wig(FILE*, bam_hdr_t*, int**, region_params);
+void write_depths_as_wig(FILE*, bam_hdr_t*, int**, region_params, FILE*);
 void usage();
 
 int
@@ -36,9 +36,10 @@ main(int argc, char** argv)
   int **depth_buffer;
   int c;
   FILE *out=stdout;
+  FILE *log=NULL;
   char*endptr;
 
-  while ((c = getopt(argc, argv, "d:n:m:i:a:s:o:")) != -1){
+  while ((c = getopt(argc, argv, "d:n:m:i:a:s:o:l:")) != -1){
     switch (c){
     case 'd':
       region_p.depth_threshold = strtol(optarg,&endptr,0);
@@ -69,6 +70,13 @@ main(int argc, char** argv)
         exit(EXIT_FAILURE);
       }
       break;
+    case 'l':
+      log = fopen(optarg, "w");
+      if(!out){
+        fputs("log file open failed\n", stderr);
+        exit(EXIT_FAILURE);
+      }
+      break;
     default:
       usage();
     }
@@ -87,7 +95,7 @@ main(int argc, char** argv)
     if(!depth_buffer[i]){fputs("memory allocation failed", stderr);exit(EXIT_FAILURE);}
   }
   read_sam_and_fill_depth_buffer(htsf, header_p, depth_buffer, pair_p);
-  write_depths_as_wig(out, header_p, depth_buffer, region_p);
+  write_depths_as_wig(out, header_p, depth_buffer, region_p, log);
   sam_close(htsf);
 }
 
@@ -159,7 +167,7 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
   return count;
 }
 void
-write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer, region_params param)
+write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer, region_params param, FILE* log)
 {
   int i,j;
   fprintf(out, "track type=wiggle_0\n");
@@ -167,15 +175,15 @@ write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer, region_para
     fprintf(out, "fixedStep chrom=%s start=1 step=1\n", header_p->target_name[i]);
     for(j=0; j < header_p-> target_len[i]; j++){
       fprintf(out, "%d\n", depth_buffer[i][j]);
-      if(j> param.non_reporting_margin && 
+      if(log && j> param.non_reporting_margin && 
          j< header_p-> target_len[i] - param.non_reporting_margin &&
          depth_buffer[i][j] < param.depth_threshold)
-        fprintf(stderr, "%s %i %i\n", header_p->target_name[i], j, depth_buffer[i][j]);
+        fprintf(log, "%s %i %i\n", header_p->target_name[i], j, depth_buffer[i][j]);
     }
   }
 }
 void usage()
 {
-  fputs("DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] > wigfile", stderr);
+  fputs("DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] [-o output_wigfile] [-l low_depth_points_file]", stderr);
 }
 

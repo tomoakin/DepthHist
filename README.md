@@ -34,7 +34,7 @@ can be converted to a more efficient binary format using wigToBigWig.
 The output defaults to stdout if not specified.
 While reporting the depths to wig format output, points with depth lower than
 depth_threshold will be written to stderr.
-The low coverage points can be gathered as low coverage regions with
+The low depth points can be gathered as low depth regions with
 range_compress.rb.
 
 # Example work flow
@@ -51,10 +51,10 @@ The following example assumes bash grammer, to redirect.
 
 read mp.metrics and choose appropriate parameter (should be automated, but not yet)
 
-    DepthHist -d 3 -n 10000 -m 40 -i 10000 -a 40000 -s mp.sam -o mp.wig 2> mp.low_cov_points
+    DepthHist -d 3 -n 10000 -m 40 -i 10000 -a 40000 -s mp.sam -o mp.wig -l mp.low_depth_points
     paste <(fatt name ref.fa) <(fatt len ref.fa) > ref.sizes
     wigToBigWig mp.wig ref.sizes mp.bw
-    ruby range_compress.rb mp.low_cov_points > mp.low_cov_regions
+    ruby range_compress.rb mp.low_depth_points > mp.low_depth_regions
 
 # BUILD
     wget https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
