@@ -29,8 +29,8 @@ name sorted.
 This program reads a sam_file and find pairs of reads having both at least min_mapq.
 Calculate the span of the pair reads and if the span size is between min_insert and max_insert
 accept as a good pair and increment the depth at each positions as depth.
-The output is a standard uncompressed text representation of wig format, which 
-can be converted to a more efficient binary format using wigToBigWig.
+The output is a standard uncompressed text representation of [wig format](https://genome.ucsc.edu/goldenpath/help/wiggle.html), which 
+can be converted to a more efficient binary format using wigToBigWig (https://genome.ucsc.edu/goldenpath/help/bigWig.html).
 The output defaults to stdout if not specified.
 While reporting the depths to wig format output, points with depth lower than
 depth_threshold will be written to stderr.
