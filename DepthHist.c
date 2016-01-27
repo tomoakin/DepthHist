@@ -169,6 +169,8 @@ read_wig_and_add_to_depth(const char *wigfilename, bam_hdr_t* header_p, int **de
       depth_buffer[scaff_id][i] += atoi(linebuf);
     }
   }
+  free(linebuf);
+  free(scaff_name);
   return retv;
 }
 
