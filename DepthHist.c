@@ -9,6 +9,8 @@ int getopt(int argc, char * const argv[],
 extern char *optarg;
 extern int optind, opterr, optopt;
 
+const char * const track_type_string = "track type=wiggle_0\n";
+
 
 typedef struct _pair_params{
   int min_valid_mapq;
@@ -20,6 +22,7 @@ typedef struct _region_params{
   int non_reporting_margin;
 } region_params;
 
+int read_wig_and_add_to_depth(const char *wigfilename, bam_hdr_t* header_p, int **depth_buffer);
 int64_t read_sam_and_fill_depth_buffer(htsFile*, bam_hdr_t*, int**, pair_params);
 void write_depths_as_wig(FILE*, bam_hdr_t*, int**, region_params, FILE*);
 void usage();
@@ -95,6 +98,11 @@ main(int argc, char** argv)
     if(!depth_buffer[i]){fputs("memory allocation failed", stderr);exit(EXIT_FAILURE);}
   }
   read_sam_and_fill_depth_buffer(htsf, header_p, depth_buffer, pair_p);
+  { /* for each file in command line option, parse as wig and sum into depth_buffer */
+    int i;
+    for(i = optind; i< argc; i++)
+      read_wig_and_add_to_depth(argv[i], header_p, depth_buffer);
+  }
   write_depths_as_wig(out, header_p, depth_buffer, region_p, log);
   sam_close(htsf);
 }
@@ -122,6 +130,46 @@ fill_depth_buffer(bam1_t *r1, bam1_t *r2, int**depth_buffer)
   for(i=f; i<t; i++){
     depth_buffer[r1->core.tid][i] += 1;
   }
+}
+
+int
+read_wig_and_add_to_depth(const char *wigfilename, bam_hdr_t* header_p, int **depth_buffer)
+{
+  int retv = 0;
+  int linebufsize=4096; /*1 page; */
+  char* linebuf,*retp;
+  FILE*wigfh;
+  char * scaff_name;
+  int start; int step;
+  linebuf = malloc(linebufsize);
+  if(!linebuf){fputs("memory allocation failed", stderr);exit(EXIT_FAILURE);}
+  scaff_name = malloc(linebufsize);
+  if(!scaff_name){fputs("memory allocation failed", stderr);exit(EXIT_FAILURE);}
+  wigfh=fopen(wigfilename,"r");
+  if(!wigfh){fprintf(stderr, "wig file open failed: %s\n", wigfilename);perror(NULL);exit(EXIT_FAILURE);}
+  retp=fgets(linebuf,linebufsize,wigfh);
+  if(!retp){fprintf(stderr, "wig file could not read: %s\n", wigfilename);perror(NULL);exit(EXIT_FAILURE);}
+  if(strcmp(linebuf,track_type_string,linebufsize)){
+    fprintf(stderr, "The first line do not match exactly: %s\n", wigfilename);
+    fprintf(stderr, "in file : %s\n", linebuf);
+    fprintf(stderr, "expected: %s\n", track_type_string);
+    exit(EXIT_FAILURE);
+  }
+/*  track type=wiggle_0 */
+/*fixedStep chrom=scaffold_blahblah start=1 step=1 */
+  while(retp=fgets(linebuf,linebufsize,wigfh)){
+    int i,ch, scaff_id;
+    sscanf(linebuf, "fixedStep chrom=%s start=%i step=%i", scaff_name, &start, &step);
+    scaff_id=bam_name2id(header_p, scaff_name);
+    for(i = start-1; i < header_p->target_len[scaff_id]; i+= step){
+      ch = getc(wigfh); ungetc(ch,wigfh); 
+      if(!isdigit(ch))break;
+      retp=fgets(linebuf,linebufsize,wigfh);
+      if(!retp){fprintf(stderr, "wig file readerr: %s\n", wigfilename);perror(NULL);exit(EXIT_FAILURE);}
+      depth_buffer[scaff_id][i] += atoi(linebuf);
+    }
+  }
+  return retv;
 }
 
 int64_t
@@ -170,7 +218,7 @@ void
 write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer, region_params param, FILE* log)
 {
   int i,j;
-  fprintf(out, "track type=wiggle_0\n");
+  fprintf(out, track_type_string);
   for(i=0;i<header_p->n_targets;i++){
     fprintf(out, "fixedStep chrom=%s start=1 step=1\n", header_p->target_name[i]);
     for(j=0; j < header_p-> target_len[i]; j++){
@@ -184,6 +232,6 @@ write_depths_as_wig(FILE*out, bam_hdr_t*header_p, int**depth_buffer, region_para
 }
 void usage()
 {
-  fputs("DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] [-o output_wigfile] [-l low_depth_points_file]", stderr);
+  fputs("DepthHist [-d depth_threshold] [-n non_reporting_margin] [-m min_mapq] [-i min_insert] [-a max_insert] [-s sam_file] [-o output_wigfile] [-l low_depth_points_file] [wig files]", stderr);
 }
 

@@ -24,7 +24,7 @@ name sorted.
         [-n non_reporting_margin] \
         [-m min_mapq] \
         [-i min_insert] [-a max_insert] \
-        [-s sam_file] [-o output]
+        [-s sam_file] [-o output] [wig files]
 
 This program reads a sam_file and find pairs of reads having both at least min_mapq.
 Calculate the span of the pair reads and if the span size is between min_insert and max_insert
@@ -55,6 +55,14 @@ read mp.metrics and choose appropriate parameter (should be automated, but not y
     paste <(fatt name ref.fa) <(fatt len ref.fa) > ref.sizes
     wigToBigWig mp.wig ref.sizes mp.bw
     ruby range_compress.rb mp.low_depth_points > mp.low_depth_regions
+
+    DepthHist -d 0 -n 7000 -m 40 -i 7000 -a 14000 -s mp2.sam -o mp2.wig -l mp2.low_depth_points
+    samtools -HS mp2.sam > samhead
+    DepthHist -d 3 -n 7000 -s samhead -o mpc.wig -l mpc.low_depth_points mp.wig mp2.wig
+
+Different library may have different valid size range. The depth from different libraries processed
+with different parameters may be summed after counting each library, rather than
+processing at once.
 
 # BUILD
     wget https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
