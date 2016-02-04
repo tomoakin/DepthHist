@@ -57,7 +57,7 @@ read mp.metrics and choose appropriate parameter (should be automated, but not y
     ruby range_compress.rb mp.low_depth_points > mp.low_depth_regions
 
     DepthHist -d 0 -n 7000 -m 40 -i 7000 -a 14000 -s mp2.sam -o mp2.wig -l mp2.low_depth_points
-    samtools -HS mp2.sam > samhead
+    samtools view -HS mp2.sam > samhead
     DepthHist -d 3 -n 7000 -s samhead -o mpc.wig -l mpc.low_depth_points mp.wig mp2.wig
 
 Different library may have different valid size range. The depth from different libraries processed
