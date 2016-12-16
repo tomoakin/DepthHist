@@ -185,14 +185,14 @@ read_sam_and_fill_depth_buffer(htsFile*htsf, bam_hdr_t*header_p, int**depth_buff
   r1=bam_init1();
   r2=bam_init1();
   retv1 = sam_read1(htsf, header_p, r1);
-  while(retv1 == 0){
+  while(retv1 >= 0){
     count ++;
     if(r1->core.qual < param.min_valid_mapq) { /* more condition may come until a good mapping is found */
       retv1 = sam_read1(htsf, header_p, r1);
       continue;
     }
     retv2 = sam_read1(htsf, header_p, r2);
-    while(retv2 == 0){ /* seeking matching record that pairs r1 */
+    while(retv2 >= 0){ /* seeking matching record that pairs r1 */
       count ++;
       if(strcmp(bam_get_qname(r1), bam_get_qname(r2))!=0){
         /* r2 is a new read. Thus, we need to make r1 point to this and start to seek again */
