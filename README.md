@@ -13,7 +13,7 @@ is a hint, but here I want to have a plot of clone depth that include the unsequ
 region.
 
 # Requirements
-This program uses HTSlib to parse SAM format data.
+This program uses HTSlib to parse SAM/BAM format data.
 In ihe input sam file, paired read should be in a cluster of
 reads with the same name. Therefore, the input should be
 just the output of an alignment program like bwa, or
@@ -26,7 +26,7 @@ name sorted.
         [-i min_insert] [-a max_insert] \
         [-s sam_file] [-o output] [wig files]
 
-This program reads a sam_file and find pairs of reads having both at least min_mapq.
+This program reads the sam_file and find pairs of reads having both at least min_mapq.
 Calculate the span of the pair reads and if the span size is between min_insert and max_insert
 accept as a good pair and increment the depth at each positions as depth.
 The output is a standard uncompressed text representation of [wig format](https://genome.ucsc.edu/goldenpath/help/wiggle.html), which 
@@ -69,7 +69,7 @@ with different parameters may be summed after counting each library, rather than
 processing at once.
 
 # BUILD
-    wget https://github.com/samtools/samtools/releases/download/1.3/samtools-1.3.tar.bz2
-    tar jxvf samtools-1.3.tar.bz2
-    make -C samtools-1.3/htslib-1.3
+    wget https://github.com/samtools/samtools/releases/download/1.3.1/samtools-1.3.1.tar.bz2
+    tar jxvf samtools-1.3.1.tar.bz2
+    make -C samtools-1.3.1/htslib-1.3.1
     make
