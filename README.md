@@ -51,6 +51,10 @@ The following example assumes bash grammer, to redirect.
 
 read mp.metrics and choose appropriate parameter (should be automated, but not yet)
 
+    Rscript select-range.R mp.metrics
+
+will give you some candidate, based on the most frequent insert size and the range that drop the frequency to half and 1/10.
+
     DepthHist -d 3 -n 10000 -m 40 -i 10000 -a 40000 -s mp.sam -o mp.wig -l mp.low_depth_points
     paste <(fatt name ref.fa) <(fatt len ref.fa) > ref.sizes
     wigToBigWig mp.wig ref.sizes mp.bw
